@@ -1,0 +1,28 @@
+# Entorno virtual
+venv/
+
+# Variables de entorno (contiene contraseñas y API keys)
+.env
+
+# Credenciales de Firebase (contiene claves privadas)
+firebase_credentials.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Alembic cache
+alembic/__pycache__/
+
+# VS Code
+.vscode/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
