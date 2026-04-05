@@ -1,116 +1,142 @@
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 from app.core.config import settings
 
-# Singleton — inicializar Gemini una sola vez
-genai.configure(api_key=settings.GEMINI_API_KEY)
-
 PROMPT_SISTEMA = """
-Eres un asistente educativo especializado exclusivamente en mantenimiento preventivo vehicular.
+Eres AutoCar Asistente, un asistente educativo especializado EXCLUSIVAMENTE en mantenimiento preventivo vehicular.
 
-Tu función es ayudar a propietarios de vehículos que NO tienen conocimientos técnicos avanzados 
-en mecánica automotriz, explicando conceptos de manera clara, sencilla y accesible.
+Tu función es ayudar a propietarios de vehículos sin conocimientos técnicos avanzados, explicando conceptos de manera clara y accesible.
 
-PUEDES responder preguntas sobre:
-- Conceptos básicos de mantenimiento preventivo vehicular
-- Explicación de qué es y para qué sirve cada tipo de mantenimiento
-- Intervalos recomendados de revisión (aceite, frenos, neumáticos, batería, etc.)
+PUEDES responder ÚNICAMENTE sobre:
+- Qué es el mantenimiento preventivo y por qué es importante
+- Intervalos recomendados de revisión: aceite, frenos, neumáticos, batería, refrigerante, filtros, bujías
 - Señales de alerta que indican que un vehículo necesita mantenimiento
 - Diferencia entre mantenimiento preventivo y correctivo
-- Consejos generales para el cuidado del vehículo
+- Consejos básicos para el cuidado del vehículo
+- Explicación de términos técnicos de mecánica automotriz en lenguaje sencillo
 
-NO PUEDES:
-- Realizar diagnósticos mecánicos específicos de fallas
-- Reemplazar la evaluación de un mecánico profesional
-- Responder preguntas no relacionadas con el mantenimiento vehicular
-- Dar recomendaciones de marcas, precios o talleres específicos
+DEBES RECHAZAR cualquier pregunta que NO sea sobre mantenimiento vehicular.
 
-Si el usuario pregunta algo fuera de tu dominio, declina amablemente y 
-recuérdale que puedes ayudarle con preguntas sobre mantenimiento preventivo vehicular.
+Cuando recibas una pregunta fuera de tu dominio responde EXACTAMENTE así:
+"Lo siento, solo puedo ayudarte con preguntas sobre mantenimiento preventivo vehicular. ¿Tienes alguna duda sobre el cuidado de tu auto, como cambios de aceite, revisión de frenos o neumáticos?"
 
-Responde siempre en español, con un tono amigable y en lenguaje sencillo.
+NUNCA respondas preguntas sobre:
+- Geografía, historia, ciencias, matemáticas o cualquier tema general
+- Política, entretenimiento, cocina u otros temas no relacionados
+- Diagnósticos de fallas mecánicas específicas
+- Precios, marcas o recomendaciones de talleres específicos
+
+Responde siempre en español con tono amigable y lenguaje sencillo.
 """
 
+# Singleton — cliente Gemini inicializado una sola vez
+_client = None
+
+def get_gemini_client():
+    global _client
+    if _client is None:
+        _client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    return _client
+
+
 class GeminiService:
-    
-    def __init__(self):
-        self.model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",
-            system_instruction=PROMPT_SISTEMA
-        )
-    
+
     def generar_respuesta(self, mensaje: str, historial: list = []) -> str:
         """Genera una respuesta del asistente conversacional."""
         try:
-            # Construir el historial de conversación
-            historial_gemini = []
+            client = get_gemini_client()
+
+            # Construir historial de conversación
+            historial_genai = []
             for msg in historial:
-                historial_gemini.append({
-                    "role": msg.rol,
-                    "parts": [msg.contenido]
-                })
-            
-            # Iniciar o continuar la conversación
-            chat = self.model.start_chat(history=historial_gemini)
-            respuesta = chat.send_message(mensaje)
-            return respuesta.text
-            
+                rol = "user" if msg.rol == "user" else "model"
+                historial_genai.append(
+                    types.Content(
+                        role=rol,
+                        parts=[types.Part(text=msg.contenido)]
+                    )
+                )
+
+            # Agregar mensaje actual
+            historial_genai.append(
+                types.Content(
+                    role="user",
+                    parts=[types.Part(text=mensaje)]
+                )
+            )
+
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=historial_genai,
+                config=types.GenerateContentConfig(
+                    system_instruction=PROMPT_SISTEMA,
+                    temperature=0.7,
+                )
+            )
+
+            return response.text
+
         except Exception as e:
             raise ValueError(f"Error al generar respuesta: {str(e)}")
-    
-    def validar_contenido_educativo(self, titulo: str, cuerpo: str, 
+
+    def validar_contenido_educativo(self, titulo: str, cuerpo: str,
                                      categoria: str) -> str:
         """Valida contenido educativo publicado por un taller."""
         try:
+            client = get_gemini_client()
+
             prompt = f"""
 Analiza el siguiente contenido educativo sobre mantenimiento vehicular 
-que fue publicado por un taller mecánico:
+publicado por un taller mecánico:
 
 TÍTULO: {titulo}
 CATEGORÍA: {categoria}
 CONTENIDO: {cuerpo}
 
-Evalúa el contenido en base a estos criterios:
-1. Claridad: ¿Es comprensible para usuarios sin conocimientos técnicos?
-2. Coherencia: ¿Es coherente y tiene sentido técnico?
-3. Pertinencia: ¿Está relacionado con mantenimiento preventivo vehicular?
-4. Seguridad: ¿No contiene información que pueda ser peligrosa o engañosa?
+Evalúa en base a:
+1. Claridad para usuarios sin conocimientos técnicos
+2. Coherencia técnica
+3. Pertinencia con mantenimiento preventivo vehicular
+4. Seguridad de la información
 
-Proporciona un informe breve con:
-- Puntuación general (Apto / Requiere revisión / No apto)
-- Observaciones principales en 2-3 oraciones
+Proporciona:
+- Puntuación: Apto / Requiere revisión / No apto
+- Observaciones en 2-3 oraciones
 - Sugerencias de mejora si aplica
 
 Responde en español de forma concisa.
 """
-            respuesta = self.model.generate_content(prompt)
-            return respuesta.text
-            
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt
+            )
+            return response.text
+
         except Exception as e:
             raise ValueError(f"Error al validar contenido: {str(e)}")
-    
-    def personalizar_recordatorio(self, tipo_mantenimiento: str, 
-                                   marca: str, modelo: str, 
+
+    def personalizar_recordatorio(self, tipo_mantenimiento: str,
+                                   marca: str, modelo: str,
                                    anio: int, kilometraje: int) -> str:
-        """Genera texto personalizado para un recordatorio de mantenimiento."""
+        """Genera texto personalizado para un recordatorio."""
         try:
+            client = get_gemini_client()
+
             prompt = f"""
-Genera un mensaje de recordatorio amigable y motivador para un propietario 
-de vehículo que debe realizar el siguiente mantenimiento:
+Genera un mensaje de recordatorio amigable para un propietario de vehículo:
 
 Vehículo: {marca} {modelo} {anio}
 Kilometraje actual: {kilometraje} km
-Tipo de mantenimiento: {tipo_mantenimiento}
+Mantenimiento requerido: {tipo_mantenimiento}
 
-El mensaje debe:
-- Ser breve (máximo 2 oraciones)
-- Explicar brevemente por qué es importante este mantenimiento
-- Usar un tono amigable y no alarmante
-- Estar en español
-
-Solo responde con el mensaje de recordatorio, sin explicaciones adicionales.
+El mensaje debe ser breve (máximo 2 oraciones), explicar por qué es importante
+y usar un tono amigable. Solo responde con el mensaje, sin explicaciones adicionales.
 """
-            respuesta = self.model.generate_content(prompt)
-            return respuesta.text
-            
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt
+            )
+            return response.text
+
         except Exception as e:
-            return f"Recordatorio: Es momento de realizar el {tipo_mantenimiento} de tu {marca} {modelo}."
+            return f"Es momento de realizar el {tipo_mantenimiento} de tu {marca} {modelo}. Mantén tu vehículo en óptimas condiciones."

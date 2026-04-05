@@ -15,18 +15,14 @@ def consultar_asistente(
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """
-    Endpoint del asistente conversacional educativo basado en Gemini.
-    El historial de conversación se mantiene solo en la sesión del cliente.
-    """
     try:
         respuesta = gemini_service.generar_respuesta(
             datos.mensaje,
             datos.historial
         )
         return RespuestaAsistenteSchema(respuesta=respuesta)
-    except ValueError as e:
+    except Exception as e:
         raise HTTPException(
             status_code=503,
-            detail="El asistente no está disponible en este momento"
+            detail=str(e)
         )
