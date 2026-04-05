@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, vehiculos, talleres, disponibilidad
+from app.routers import auth, vehiculos, talleres, disponibilidad, reservas, asistente
 
 app = FastAPI(
     title="AutoCar API",
@@ -20,6 +20,8 @@ app.include_router(auth.router)
 app.include_router(vehiculos.router)
 app.include_router(talleres.router)
 app.include_router(disponibilidad.router)
+app.include_router(reservas.router)
+app.include_router(asistente.router)
 
 @app.get("/")
 def root():
