@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, vehiculos, talleres, disponibilidad, reservas, asistente, mantenimientos, recordatorios
+from app.routers import auth, vehiculos, talleres, disponibilidad, reservas, asistente, mantenimientos, recordatorios, educativo
 
 
 
@@ -26,6 +26,7 @@ app.include_router(reservas.router)
 app.include_router(asistente.router)
 app.include_router(mantenimientos.router)
 app.include_router(recordatorios.router)
+app.include_router(educativo.router)
 
 @app.get("/")
 def root():
