@@ -1,10 +1,11 @@
 from pydantic import BaseModel
 from datetime import date
 from typing import Optional
+from uuid import UUID
 
 class MantenimientoCreate(BaseModel):
-    vehiculo_id: int
-    tipo_mantenimiento_id: int
+    vehiculo_id: str
+    tipo_mantenimiento_id: UUID
     fecha: date
     kilometraje: Optional[int] = None
     costo: Optional[float] = None
@@ -13,8 +14,8 @@ class MantenimientoCreate(BaseModel):
 
 class MantenimientoResponse(BaseModel):
     id: int
-    vehiculo_id: int
-    tipo_mantenimiento_id: int
+    vehiculo_id: str
+    tipo_mantenimiento_id: UUID
     fecha: date
     kilometraje: Optional[int]
     costo: Optional[float]
@@ -25,9 +26,9 @@ class MantenimientoResponse(BaseModel):
         from_attributes = True
 
 class TipoMantenimientoResponse(BaseModel):
-    id: int
+    id: UUID
     nombre: str
-    descripcion: Optional[str]
+    descripcion_base: Optional[str]
     intervalo_km: Optional[int]
     intervalo_dias: Optional[int]
 

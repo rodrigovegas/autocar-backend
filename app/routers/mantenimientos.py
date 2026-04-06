@@ -35,7 +35,7 @@ def registrar_mantenimiento(
 
 @router.get("/vehiculo/{vehiculo_id}", response_model=List[MantenimientoResponse])
 def listar_por_vehiculo(
-    vehiculo_id: int,
+    vehiculo_id: str,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user),
 ):
