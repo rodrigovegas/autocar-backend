@@ -14,6 +14,9 @@ class Vehiculo(Base):
     modelo = Column(String(80), nullable=False)
     anio = Column(SmallInteger, nullable=False)
     kilometraje_actual = Column(Integer, nullable=False)
+    placa = Column(String(10), nullable=True, unique=True)
+    color = Column(String(50), nullable=True)
+    tipo_combustible = Column(String(20), nullable=True)
     fecha_registro = Column(DateTime(timezone=True), server_default=func.now())
     activo = Column(Boolean, default=True, nullable=False)
 

@@ -14,24 +14,29 @@ from app.models.usuario import Usuario
 router = APIRouter(prefix="/vehiculos", tags=["Vehículos"])
 vehiculo_service = VehiculoService()
 
-@router.get("", response_model=List[VehiculoResponse])
-def listar_vehiculos(
-    current_user: Usuario = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    """Lista todos los vehículos activos del usuario autenticado."""
-    vehiculos = vehiculo_service.obtener_vehiculos_usuario(
-        db, str(current_user.id)
-    )
-    return [VehiculoResponse(
+def _build_response(v) -> VehiculoResponse:
+    return VehiculoResponse(
         id=str(v.id),
         marca=v.marca,
         modelo=v.modelo,
         anio=v.anio,
         kilometraje_actual=v.kilometraje_actual,
+        placa=v.placa,
+        color=v.color,
+        tipo_combustible=v.tipo_combustible,
         activo=v.activo,
         fecha_registro=v.fecha_registro
-    ) for v in vehiculos]
+    )
+
+@router.get("", response_model=List[VehiculoResponse])
+def listar_vehiculos(
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    vehiculos = vehiculo_service.obtener_vehiculos_usuario(
+        db, str(current_user.id)
+    )
+    return [_build_response(v) for v in vehiculos]
 
 @router.post("", response_model=VehiculoResponse, status_code=201)
 def registrar_vehiculo(
@@ -39,7 +44,6 @@ def registrar_vehiculo(
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Registra un nuevo vehículo para el usuario autenticado."""
     try:
         vehiculo = vehiculo_service.registrar_vehiculo(
             db,
@@ -47,17 +51,12 @@ def registrar_vehiculo(
             datos.marca,
             datos.modelo,
             datos.anio,
-            datos.kilometraje_actual
+            datos.kilometraje_actual,
+            datos.placa,
+            datos.color,
+            datos.tipo_combustible,
         )
-        return VehiculoResponse(
-            id=str(vehiculo.id),
-            marca=vehiculo.marca,
-            modelo=vehiculo.modelo,
-            anio=vehiculo.anio,
-            kilometraje_actual=vehiculo.kilometraje_actual,
-            activo=vehiculo.activo,
-            fecha_registro=vehiculo.fecha_registro
-        )
+        return _build_response(vehiculo)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -68,7 +67,6 @@ def actualizar_vehiculo(
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Actualiza la información de un vehículo del usuario autenticado."""
     try:
         vehiculo = vehiculo_service.actualizar_vehiculo(
             db,
@@ -77,17 +75,12 @@ def actualizar_vehiculo(
             datos.marca,
             datos.modelo,
             datos.anio,
-            datos.kilometraje_actual
+            datos.kilometraje_actual,
+            datos.placa,
+            datos.color,
+            datos.tipo_combustible,
         )
-        return VehiculoResponse(
-            id=str(vehiculo.id),
-            marca=vehiculo.marca,
-            modelo=vehiculo.modelo,
-            anio=vehiculo.anio,
-            kilometraje_actual=vehiculo.kilometraje_actual,
-            activo=vehiculo.activo,
-            fecha_registro=vehiculo.fecha_registro
-        )
+        return _build_response(vehiculo)
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
@@ -99,12 +92,9 @@ def eliminar_vehiculo(
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Desactiva un vehículo del usuario autenticado."""
     try:
         vehiculo_service.eliminar_vehiculo(
-            db,
-            vehiculo_id,
-            str(current_user.id)
+            db, vehiculo_id, str(current_user.id)
         )
     except PermissionError as e:
         raise HTTPException(status_code=403, detail=str(e))
