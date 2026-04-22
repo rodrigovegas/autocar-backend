@@ -1,8 +1,8 @@
-"""tablas_iniciales
+"""esquema_inicial_completo
 
-Revision ID: 6480cccdfc69
+Revision ID: 1f9cd9f2f44d
 Revises: 
-Create Date: 2026-04-02 05:46:42.053994
+Create Date: 2026-04-22 19:36:09.469314
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision: str = '6480cccdfc69'
+revision: str = '1f9cd9f2f44d'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -31,6 +31,13 @@ def upgrade() -> None:
     sa.UniqueConstraint('correo'),
     sa.UniqueConstraint('firebase_uid')
     )
+    op.create_table('especialidad',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('nombre', sa.String(length=100), nullable=False),
+    sa.Column('descripcion', sa.String(length=250), nullable=True),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('nombre')
+    )
     op.create_table('notificacion',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('destinatario_tipo', sa.String(length=20), nullable=False),
@@ -42,23 +49,6 @@ def upgrade() -> None:
     sa.Column('fecha_envio', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('taller',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('firebase_uid', sa.String(length=128), nullable=False),
-    sa.Column('nombre', sa.String(length=150), nullable=False),
-    sa.Column('especialidad', sa.String(length=100), nullable=False),
-    sa.Column('direccion_texto', sa.String(length=250), nullable=False),
-    sa.Column('telefono', sa.String(length=20), nullable=False),
-    sa.Column('correo', sa.String(length=150), nullable=False),
-    sa.Column('latitud', sa.Numeric(precision=10, scale=7), nullable=True),
-    sa.Column('longitud', sa.Numeric(precision=10, scale=7), nullable=True),
-    sa.Column('estado', sa.String(length=20), nullable=False),
-    sa.Column('fecha_registro', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.Column('fecha_activacion', sa.DateTime(timezone=True), nullable=True),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('correo'),
-    sa.UniqueConstraint('firebase_uid')
-    )
     op.create_table('tipo_mantenimiento',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('nombre', sa.String(length=100), nullable=False),
@@ -66,6 +56,7 @@ def upgrade() -> None:
     sa.Column('intervalo_km', sa.Integer(), nullable=True),
     sa.Column('intervalo_dias', sa.Integer(), nullable=True),
     sa.Column('activo', sa.Boolean(), nullable=False),
+    sa.Column('estado', sa.String(length=20), nullable=False),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('nombre')
     )
@@ -80,6 +71,40 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('correo'),
     sa.UniqueConstraint('firebase_uid')
+    )
+    op.create_table('taller',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('firebase_uid', sa.String(length=128), nullable=False),
+    sa.Column('nombre', sa.String(length=150), nullable=False),
+    sa.Column('direccion_texto', sa.String(length=250), nullable=False),
+    sa.Column('telefono', sa.String(length=20), nullable=False),
+    sa.Column('correo', sa.String(length=150), nullable=False),
+    sa.Column('latitud', sa.Numeric(precision=10, scale=7), nullable=True),
+    sa.Column('longitud', sa.Numeric(precision=10, scale=7), nullable=True),
+    sa.Column('estado', sa.String(length=20), nullable=False),
+    sa.Column('fecha_registro', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.Column('fecha_activacion', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('especialidad_id', sa.UUID(), nullable=True),
+    sa.ForeignKeyConstraint(['especialidad_id'], ['especialidad.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('correo'),
+    sa.UniqueConstraint('firebase_uid')
+    )
+    op.create_table('vehiculo',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('usuario_id', sa.UUID(), nullable=False),
+    sa.Column('marca', sa.String(length=80), nullable=False),
+    sa.Column('modelo', sa.String(length=80), nullable=False),
+    sa.Column('anio', sa.SmallInteger(), nullable=False),
+    sa.Column('kilometraje_actual', sa.Integer(), nullable=False),
+    sa.Column('placa', sa.String(length=10), nullable=True),
+    sa.Column('color', sa.String(length=50), nullable=True),
+    sa.Column('tipo_combustible', sa.String(length=20), nullable=True),
+    sa.Column('fecha_registro', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.Column('activo', sa.Boolean(), nullable=False),
+    sa.ForeignKeyConstraint(['usuario_id'], ['usuario.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('placa')
     )
     op.create_table('contenido_educativo',
     sa.Column('id', sa.UUID(), nullable=False),
@@ -110,31 +135,6 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('taller_id', 'fecha', 'hora_inicio', 'hora_fin', name='uq_disponibilidad')
     )
-    op.create_table('servicio_taller',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('taller_id', sa.UUID(), nullable=False),
-    sa.Column('tipo_mantenimiento_id', sa.UUID(), nullable=False),
-    sa.Column('nombre_personalizado', sa.String(length=100), nullable=True),
-    sa.Column('descripcion_personalizada', sa.Text(), nullable=True),
-    sa.Column('tiempo_estimado_minutos', sa.SmallInteger(), nullable=False),
-    sa.Column('activo', sa.Boolean(), nullable=False),
-    sa.ForeignKeyConstraint(['taller_id'], ['taller.id'], ),
-    sa.ForeignKeyConstraint(['tipo_mantenimiento_id'], ['tipo_mantenimiento.id'], ),
-    sa.PrimaryKeyConstraint('id'),
-    sa.UniqueConstraint('taller_id', 'tipo_mantenimiento_id', name='uq_taller_tipo')
-    )
-    op.create_table('vehiculo',
-    sa.Column('id', sa.UUID(), nullable=False),
-    sa.Column('usuario_id', sa.UUID(), nullable=False),
-    sa.Column('marca', sa.String(length=80), nullable=False),
-    sa.Column('modelo', sa.String(length=80), nullable=False),
-    sa.Column('anio', sa.SmallInteger(), nullable=False),
-    sa.Column('kilometraje_actual', sa.Integer(), nullable=False),
-    sa.Column('fecha_registro', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
-    sa.Column('activo', sa.Boolean(), nullable=False),
-    sa.ForeignKeyConstraint(['usuario_id'], ['usuario.id'], ),
-    sa.PrimaryKeyConstraint('id')
-    )
     op.create_table('recordatorio',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('usuario_id', sa.UUID(), nullable=False),
@@ -152,6 +152,19 @@ def upgrade() -> None:
     sa.ForeignKeyConstraint(['vehiculo_id'], ['vehiculo.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
+    op.create_table('servicio_taller',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('taller_id', sa.UUID(), nullable=False),
+    sa.Column('tipo_mantenimiento_id', sa.UUID(), nullable=False),
+    sa.Column('nombre_personalizado', sa.String(length=100), nullable=True),
+    sa.Column('descripcion_personalizada', sa.Text(), nullable=True),
+    sa.Column('tiempo_estimado_minutos', sa.SmallInteger(), nullable=False),
+    sa.Column('activo', sa.Boolean(), nullable=False),
+    sa.ForeignKeyConstraint(['taller_id'], ['taller.id'], ),
+    sa.ForeignKeyConstraint(['tipo_mantenimiento_id'], ['tipo_mantenimiento.id'], ),
+    sa.PrimaryKeyConstraint('id'),
+    sa.UniqueConstraint('taller_id', 'tipo_mantenimiento_id', name='uq_taller_tipo')
+    )
     op.create_table('reserva',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('usuario_id', sa.UUID(), nullable=False),
@@ -160,6 +173,9 @@ def upgrade() -> None:
     sa.Column('disponibilidad_id', sa.UUID(), nullable=False),
     sa.Column('estado', sa.String(length=20), nullable=False),
     sa.Column('motivo_rechazo', sa.Text(), nullable=True),
+    sa.Column('descripcion_otro', sa.Text(), nullable=True),
+    sa.Column('calificacion', sa.SmallInteger(), nullable=True),
+    sa.Column('comentario_calificacion', sa.Text(), nullable=True),
     sa.Column('fecha_creacion', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.Column('fecha_actualizacion', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
     sa.ForeignKeyConstraint(['disponibilidad_id'], ['disponibilidad_taller.id'], ),
@@ -177,6 +193,13 @@ def upgrade() -> None:
     sa.Column('observaciones', sa.Text(), nullable=True),
     sa.Column('fecha_realizado', sa.Date(), nullable=False),
     sa.Column('fecha_registro', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.Column('costo', sa.Numeric(precision=10, scale=2), nullable=True),
+    sa.Column('detalle_tecnico', sa.Text(), nullable=True),
+    sa.Column('problemas_detectados', sa.Text(), nullable=True),
+    sa.Column('gravedad_problemas', sa.String(length=10), nullable=True),
+    sa.Column('km_proximo_mantenimiento', sa.Integer(), nullable=True),
+    sa.Column('fecha_proximo_mantenimiento', sa.Date(), nullable=True),
+    sa.Column('recomendaciones', sa.Text(), nullable=True),
     sa.ForeignKeyConstraint(['reserva_id'], ['reserva.id'], ),
     sa.ForeignKeyConstraint(['taller_id'], ['taller.id'], ),
     sa.ForeignKeyConstraint(['vehiculo_id'], ['vehiculo.id'], ),
@@ -201,14 +224,15 @@ def downgrade() -> None:
     op.drop_table('reserva_servicio')
     op.drop_table('mantenimiento')
     op.drop_table('reserva')
-    op.drop_table('recordatorio')
-    op.drop_table('vehiculo')
     op.drop_table('servicio_taller')
+    op.drop_table('recordatorio')
     op.drop_table('disponibilidad_taller')
     op.drop_table('contenido_educativo')
+    op.drop_table('vehiculo')
+    op.drop_table('taller')
     op.drop_table('usuario')
     op.drop_table('tipo_mantenimiento')
-    op.drop_table('taller')
     op.drop_table('notificacion')
+    op.drop_table('especialidad')
     op.drop_table('administrador')
     # ### end Alembic commands ###
