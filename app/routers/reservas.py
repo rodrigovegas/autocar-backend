@@ -6,6 +6,7 @@ from app.core.dependencies import get_current_user, get_current_taller
 from app.schemas.reserva import (
     ReservaCreateSchema,
     ReservaEstadoSchema,
+    CalificarReservaSchema,
     ReservaResponse,
     ServicioReservaResponse
 )
@@ -17,7 +18,6 @@ router = APIRouter(prefix="/reservas", tags=["Reservas"])
 reserva_service = ReservaService()
 
 def _build_reserva_response(reserva) -> ReservaResponse:
-    """Construye el objeto de respuesta de una reserva."""
     servicios = [ServicioReservaResponse(
         id=str(rs.servicio_taller_id),
         nombre=rs.servicio_taller.nombre_personalizado
@@ -33,7 +33,10 @@ def _build_reserva_response(reserva) -> ReservaResponse:
         estado=reserva.estado,
         servicios=servicios,
         motivo_rechazo=reserva.motivo_rechazo,
-        fecha_creacion=reserva.fecha_creacion
+        descripcion_otro=reserva.descripcion_otro,
+        fecha_creacion=reserva.fecha_creacion,
+        calificacion=reserva.calificacion,
+        comentario_calificacion=reserva.comentario_calificacion,
     )
 
 @router.post("", response_model=ReservaResponse, status_code=201)
@@ -42,7 +45,6 @@ def crear_reserva(
     current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Crea una nueva reserva de mantenimiento preventivo."""
     try:
         reserva = reserva_service.crear_reserva(
             db,
@@ -50,7 +52,8 @@ def crear_reserva(
             datos.taller_id,
             datos.vehiculo_id,
             datos.disponibilidad_id,
-            datos.servicios_ids
+            datos.servicios_ids,
+            datos.descripcion_otro
         )
         return _build_reserva_response(reserva)
     except ValueError as e:
@@ -99,6 +102,32 @@ def actualizar_estado_reserva(
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.patch("/{reserva_id}/calificar", response_model=ReservaResponse)
+def calificar_reserva(
+    reserva_id: str,
+    datos: CalificarReservaSchema,
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """El usuario califica una reserva completada."""
+    from app.models.reserva import Reserva as ReservaModel
+    import uuid as _uuid
+    reserva = db.query(ReservaModel).filter(
+        ReservaModel.id == _uuid.UUID(reserva_id)
+    ).first()
+    if not reserva:
+        raise HTTPException(status_code=404, detail="Reserva no encontrada")
+    if str(reserva.usuario_id) != str(current_user.id):
+        raise HTTPException(status_code=403, detail="No tienes permiso para calificar esta reserva")
+    if reserva.estado != "completada":
+        raise HTTPException(status_code=400, detail="Solo se pueden calificar reservas completadas")
+    reserva.calificacion = datos.calificacion
+    reserva.comentario_calificacion = datos.comentario
+    db.commit()
+    db.refresh(reserva)
+    return _build_reserva_response(reserva)
+
 
 @router.patch("/{reserva_id}/cancelar", response_model=ReservaResponse)
 def cancelar_reserva(

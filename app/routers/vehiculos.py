@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
+import uuid
 from app.database import get_db
 from app.core.dependencies import get_current_user
 from app.schemas.vehiculo import (
@@ -10,6 +11,8 @@ from app.schemas.vehiculo import (
 )
 from app.services.vehiculo_service import VehiculoService
 from app.models.usuario import Usuario
+from app.models.vehiculo import Vehiculo
+from app.models.reserva import Reserva
 
 router = APIRouter(prefix="/vehiculos", tags=["Vehículos"])
 vehiculo_service = VehiculoService()
@@ -100,3 +103,33 @@ def eliminar_vehiculo(
         raise HTTPException(status_code=403, detail=str(e))
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.patch("/{vehiculo_id}/toggle", response_model=VehiculoResponse)
+def toggle_vehiculo(
+    vehiculo_id: str,
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    vehiculo = db.query(Vehiculo).filter(
+        Vehiculo.id == uuid.UUID(vehiculo_id),
+        Vehiculo.usuario_id == current_user.id,
+    ).first()
+    if not vehiculo:
+        raise HTTPException(status_code=404, detail="Vehículo no encontrado")
+
+    if vehiculo.activo:
+        reservas_activas = db.query(Reserva).filter(
+            Reserva.vehiculo_id == vehiculo.id,
+            Reserva.estado.in_(["pendiente", "confirmada"]),
+        ).count()
+        if reservas_activas > 0:
+            raise HTTPException(
+                status_code=400,
+                detail="No puedes desactivar un vehículo con reservas activas",
+            )
+
+    vehiculo.activo = not vehiculo.activo
+    db.commit()
+    db.refresh(vehiculo)
+    return _build_response(vehiculo)

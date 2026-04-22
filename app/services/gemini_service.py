@@ -140,3 +140,44 @@ y usar un tono amigable. Solo responde con el mensaje, sin explicaciones adicion
 
         except Exception as e:
             return f"Es momento de realizar el {tipo_mantenimiento} de tu {marca} {modelo}. Mantén tu vehículo en óptimas condiciones."
+
+    def generar_template_formulario(self, descripcion: str) -> str:
+        """Genera un template de formulario de mantenimiento basado en la descripción del usuario."""
+        try:
+            client = get_gemini_client()
+
+            prompt = f"""
+Eres un mecánico experto. Un usuario describió el siguiente problema o necesidad con su vehículo:
+
+"{descripcion}"
+
+Genera un template de formulario de revisión técnica específico para este caso.
+El template debe:
+- Ser específico para el problema descrito
+- Tener entre 5 y 10 ítems de revisión
+- Cada ítem debe tener opciones de estado separadas por " / "
+- Incluir siempre al menos una opción "No revisado"
+- Terminar con una línea de "OBSERVACIONES ADICIONALES:"
+- Estar en español
+- Ser conciso y profesional
+
+Responde ÚNICAMENTE con el template, sin explicaciones adicionales.
+
+Ejemplo de formato:
+REVISIÓN POR RUIDO AL FRENAR:
+- Estado pastillas delanteras: Buenas / Desgastadas / Requieren cambio
+- Estado pastillas traseras: Buenas / Desgastadas / Requieren cambio
+- Discos: Buen estado / Rayados / Desgastados
+- Líquido de frenos: Normal / Bajo / Contaminado
+- Pinzas de freno: Funcionando / Con fuga / Bloqueadas
+
+OBSERVACIONES ADICIONALES:
+"""
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=prompt
+            )
+            return response.text
+
+        except Exception:
+            return f"REVISIÓN - {descripcion.upper()}:\n- Estado general: Bueno / Regular / Malo / No revisado\n- Problema específico: Identificado / No identificado\n\nOBSERVACIONES ADICIONALES:\n"

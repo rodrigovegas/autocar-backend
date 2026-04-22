@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, DateTime, Text, ForeignKey
+from sqlalchemy import Column, String, DateTime, Text, ForeignKey, SmallInteger
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
@@ -15,6 +15,9 @@ class Reserva(Base):
     disponibilidad_id = Column(UUID(as_uuid=True), ForeignKey("disponibilidad_taller.id"), nullable=False)
     estado = Column(String(20), default="pendiente", nullable=False)
     motivo_rechazo = Column(Text, nullable=True)
+    descripcion_otro = Column(Text, nullable=True)
+    calificacion = Column(SmallInteger, nullable=True)
+    comentario_calificacion = Column(Text, nullable=True)
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
     fecha_actualizacion = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

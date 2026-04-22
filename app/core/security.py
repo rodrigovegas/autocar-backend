@@ -10,7 +10,7 @@ firebase_admin.initialize_app(cred)
 def verificar_token_firebase(id_token: str) -> dict:
     """Verifica el token JWT de Firebase y retorna los datos del usuario."""
     try:
-        decoded_token = auth.verify_id_token(id_token)
+        decoded_token = auth.verify_id_token(id_token, clock_skew_seconds=60)
         return decoded_token
     except Exception as e:
         raise ValueError(f"Token inválido: {str(e)}")

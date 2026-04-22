@@ -7,8 +7,8 @@ class VehiculoRepository:
 
     def obtener_por_usuario(self, db: Session, usuario_id: str):
         return db.query(Vehiculo).filter(
-            Vehiculo.usuario_id == usuario_id,
-            Vehiculo.activo == True
+            Vehiculo.usuario_id == usuario_id
+            ).order_by(Vehiculo.activo.desc()
         ).all()
 
     def obtener_por_id(self, db: Session, vehiculo_id: str):

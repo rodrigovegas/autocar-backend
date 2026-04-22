@@ -37,7 +37,9 @@ class MantenimientoRegistroResponse(BaseModel):
 class MantenimientoHistorialResponse(BaseModel):
     id: UUID
     vehiculo_id: UUID
+    vehiculo_nombre: Optional[str] = None
     taller_id: UUID
+    taller_nombre: Optional[str] = None
     kilometraje_registro: int
     fecha_realizado: date
     costo: Optional[float]

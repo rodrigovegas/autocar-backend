@@ -1,13 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.routers import auth, vehiculos, talleres, disponibilidad, reservas, asistente, mantenimientos, recordatorios, educativo
-
-
+from app.routers import (
+    auth, vehiculos, talleres, disponibilidad,
+    reservas, asistente, mantenimientos, recordatorios,
+    educativo, admin, especialidades, usuarios,
+)
 
 app = FastAPI(
     title="AutoCar API",
     description="Plataforma móvil para gestión de mantenimiento preventivo vehicular",
-    version="1.0.0"
+    version="1.0.0",
 )
 
 app.add_middleware(
@@ -27,10 +29,15 @@ app.include_router(asistente.router)
 app.include_router(mantenimientos.router)
 app.include_router(recordatorios.router)
 app.include_router(educativo.router)
+app.include_router(admin.router)
+app.include_router(especialidades.router)
+app.include_router(usuarios.router)
+
 
 @app.get("/")
 def root():
     return {"mensaje": "AutoCar API funcionando correctamente"}
+
 
 @app.get("/health")
 def health_check():

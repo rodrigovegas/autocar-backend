@@ -11,3 +11,6 @@ class ConsultaAsistenteSchema(BaseModel):
 
 class RespuestaAsistenteSchema(BaseModel):
     respuesta: str
+
+class GenerarTemplateSchema(BaseModel):
+    descripcion: str
