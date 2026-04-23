@@ -1,4 +1,5 @@
 from app.models.usuario import Usuario
+from app.models.especialidad import Especialidad
 from app.models.taller import Taller
 from app.models.administrador import Administrador
 from app.models.vehiculo import Vehiculo
