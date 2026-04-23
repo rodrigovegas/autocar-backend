@@ -37,7 +37,7 @@ class AuthRepository:
         taller = Taller(
             firebase_uid=firebase_uid,
             nombre=nombre,
-            especialidad=especialidad,
+            especialidad_id=especialidad,
             direccion_texto=direccion_texto,
             telefono=telefono,
             correo=correo,
