@@ -1,5 +1,6 @@
 from sqlalchemy.orm import Session
 from app.repositories.auth_repository import AuthRepository
+from app.models.especialidad import Especialidad
 from app.core.security import (
     crear_usuario_firebase,
     verificar_token_firebase,
@@ -31,12 +32,21 @@ class AuthService:
         if auth_repo.obtener_taller_por_correo(db, correo):
             raise ValueError("El correo ya está registrado")
 
+        # Buscar la especialidad por nombre y obtener su UUID
+        especialidad_obj = db.query(Especialidad).filter(
+            Especialidad.nombre == especialidad,
+            Especialidad.activo == True
+        ).first()
+
+        if not especialidad_obj:
+            raise ValueError("La especialidad seleccionada no existe o no está activa")
+
         # Crear usuario en Firebase
         firebase_uid = crear_usuario_firebase(correo, contrasena)
 
-        # Crear taller en la base de datos
+        # Crear taller en la base de datos (pasando el UUID, no el nombre)
         taller = auth_repo.crear_taller(
-            db, firebase_uid, nombre, especialidad,
+            db, firebase_uid, nombre, especialidad_obj.id,
             direccion_texto, telefono, correo
         )
         return taller
