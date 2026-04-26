@@ -15,6 +15,7 @@ class Usuario(Base):
     telefono = Column(String(20), nullable=True)
     fecha_registro = Column(DateTime(timezone=True), server_default=func.now())
     activo = Column(Boolean, default=True, nullable=False)
+    auth_method = Column(String(20), nullable=False, default="email")
 
     vehiculos = relationship("Vehiculo", back_populates="usuario")
     reservas = relationship("Reserva", back_populates="usuario")

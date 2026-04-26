@@ -18,6 +18,7 @@ class Taller(Base):
     latitud = Column(Numeric(10, 7), nullable=True)
     longitud = Column(Numeric(10, 7), nullable=True)
     estado = Column(String(20), default="pendiente", nullable=False)
+    auth_method = Column(String(20), nullable=False, default="email")
     fecha_registro = Column(DateTime(timezone=True), server_default=func.now())
     fecha_activacion = Column(DateTime(timezone=True), nullable=True)
     especialidad_id = Column(

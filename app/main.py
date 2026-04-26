@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.routers import (
-    auth, vehiculos, talleres, disponibilidad,
+    auth, auth_google, vehiculos, talleres, disponibilidad,
     reservas, asistente, mantenimientos, recordatorios,
     educativo, admin, especialidades, usuarios,
 )
@@ -21,6 +21,7 @@ app.add_middleware(
 )
 
 app.include_router(auth.router)
+app.include_router(auth_google.router)
 app.include_router(vehiculos.router)
 app.include_router(talleres.router)
 app.include_router(disponibilidad.router)

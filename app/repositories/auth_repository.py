@@ -3,6 +3,7 @@ from app.models.usuario import Usuario
 from app.models.taller import Taller
 from app.models.administrador import Administrador
 
+
 class AuthRepository:
 
     def obtener_usuario_por_firebase_uid(self, db: Session, firebase_uid: str):
@@ -20,28 +21,48 @@ class AuthRepository:
     def obtener_taller_por_correo(self, db: Session, correo: str):
         return db.query(Taller).filter(Taller.correo == correo).first()
 
-    def crear_usuario(self, db: Session, firebase_uid: str, nombre_completo: str, correo: str):
+    def obtener_admin_por_correo(self, db: Session, correo: str):
+        return db.query(Administrador).filter(Administrador.correo == correo).first()
+
+    def crear_usuario(
+        self,
+        db: Session,
+        firebase_uid: str,
+        nombre_completo: str,
+        correo: str,
+        auth_method: str = "email",
+    ):
         usuario = Usuario(
             firebase_uid=firebase_uid,
             nombre_completo=nombre_completo,
-            correo=correo
+            correo=correo,
+            auth_method=auth_method,
         )
         db.add(usuario)
         db.commit()
         db.refresh(usuario)
         return usuario
 
-    def crear_taller(self, db: Session, firebase_uid: str, nombre: str,
-                     especialidad: str, direccion_texto: str,
-                     telefono: str, correo: str):
+    def crear_taller(
+        self,
+        db: Session,
+        firebase_uid: str,
+        nombre: str,
+        especialidad_id,          # UUID de la especialidad (no el nombre)
+        direccion_texto: str,
+        telefono: str,
+        correo: str,
+        auth_method: str = "email",
+    ):
         taller = Taller(
             firebase_uid=firebase_uid,
             nombre=nombre,
-            especialidad=especialidad,
+            especialidad_id=especialidad_id,   # Corregido: era `especialidad=` (bug)
             direccion_texto=direccion_texto,
             telefono=telefono,
             correo=correo,
-            estado="pendiente"
+            estado="pendiente",
+            auth_method=auth_method,
         )
         db.add(taller)
         db.commit()
