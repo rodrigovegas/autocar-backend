@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
@@ -22,7 +22,10 @@ def registrar_mantenimiento(
     current_taller: Taller = Depends(get_current_taller),
     db: Session = Depends(get_db),
 ):
-    return mantenimiento_service.registrar_mantenimiento(db, datos, current_taller.id)
+    try:
+        return mantenimiento_service.registrar_mantenimiento(db, datos, current_taller.id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.get("/historial/usuario", response_model=List[MantenimientoHistorialResponse])

@@ -5,8 +5,11 @@ import uuid
 
 from app.models.mantenimiento import Mantenimiento
 from app.models.reserva import Reserva
+from app.models.reserva_servicio import ReservaServicio
+from app.models.servicio_taller import ServicioTaller
 from app.models.vehiculo import Vehiculo
 from app.schemas.mantenimiento_registro import MantenimientoRegistroCreate
+from app.services.recordatorio_service import recordatorio_service
 
 
 class TallerMantenimientoService:
@@ -58,6 +61,40 @@ class TallerMantenimientoService:
         )
         db.add(mantenimiento)
         reserva.estado = "completada"
+
+        if datos.crear_recordatorio_proximo:
+            # Obtener el tipo_mantenimiento_id del primer servicio de la reserva.
+            # Si la reserva tiene varios servicios, se usa el primero; en el futuro
+            # se podrá pedir al taller que elija cuál aplica.
+            resultado = (
+                db.query(ServicioTaller.tipo_mantenimiento_id)
+                .join(ReservaServicio, ReservaServicio.servicio_taller_id == ServicioTaller.id)
+                .filter(ReservaServicio.reserva_id == reserva.id)
+                .first()
+            )
+
+            if resultado is not None:
+                tipo_mantenimiento_id = str(resultado[0])
+                try:
+                    recordatorio_service.crear_automatico_desde_mantenimiento(
+                        db=db,
+                        usuario_id=str(reserva.usuario_id),
+                        vehiculo_id=str(reserva.vehiculo_id),
+                        tipo_mantenimiento_id=tipo_mantenimiento_id,
+                        fecha_programada=datos.fecha_proximo_mantenimiento,
+                        kilometraje_programado=datos.km_proximo_mantenimiento,
+                        texto_personalizado=(
+                            datos.recomendaciones[:200]
+                            if datos.recomendaciones
+                            else None
+                        ),
+                    )
+                except ValueError:
+                    db.rollback()
+                    raise
+            # Si la reserva no tiene servicios asociados, se omite silenciosamente
+            # sin interrumpir el guardado del mantenimiento.
+
         db.commit()
         db.refresh(mantenimiento)
         return mantenimiento

@@ -73,3 +73,49 @@ class RecordatorioRepository:
     def eliminar(self, db: Session, recordatorio: Recordatorio) -> None:
         db.delete(recordatorio)
         db.commit()
+
+    # ── Métodos para flujo automático (sin commit — atomicidad con el mantenimiento) ──
+
+    def obtener_activo_por_vehiculo_y_tipo(
+        self, db: Session, vehiculo_id: str, tipo_mantenimiento_id: str
+    ) -> Recordatorio | None:
+        return (
+            db.query(Recordatorio)
+            .filter(
+                Recordatorio.vehiculo_id == uuid.UUID(vehiculo_id),
+                Recordatorio.tipo_mantenimiento_id == uuid.UUID(tipo_mantenimiento_id),
+                Recordatorio.estado == "activo",
+            )
+            .first()
+        )
+
+    def eliminar_flush(self, db: Session, recordatorio: Recordatorio) -> None:
+        """Elimina sin commit — para usarse dentro de una transacción mayor."""
+        db.delete(recordatorio)
+        db.flush()
+
+    def crear_flush(
+        self,
+        db: Session,
+        usuario_id: str,
+        vehiculo_id: str,
+        tipo_mantenimiento_id: str,
+        origen: str,
+        fecha_programada=None,
+        kilometraje_programado=None,
+        texto_personalizado=None,
+    ) -> Recordatorio:
+        """Crea sin commit — el commit lo hace quien controla la transacción."""
+        recordatorio = Recordatorio(
+            usuario_id=uuid.UUID(usuario_id),
+            vehiculo_id=uuid.UUID(vehiculo_id),
+            tipo_mantenimiento_id=uuid.UUID(tipo_mantenimiento_id),
+            origen=origen,
+            fecha_programada=fecha_programada,
+            kilometraje_programado=kilometraje_programado,
+            texto_personalizado=texto_personalizado,
+            estado="activo",
+        )
+        db.add(recordatorio)
+        db.flush()
+        return recordatorio

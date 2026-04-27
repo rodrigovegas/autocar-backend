@@ -8,6 +8,7 @@ import uuid
 recordatorio_repo = RecordatorioRepository()
 
 
+
 class RecordatorioService:
 
     def listar_por_usuario(self, db: Session, usuario_id: str):
@@ -81,3 +82,53 @@ class RecordatorioService:
                 "No tiene permisos para eliminar este recordatorio"
             )
         recordatorio_repo.eliminar(db, recordatorio)
+
+    # ── FASE 2: recordatorio automático desde mantenimiento del taller ──
+
+    def crear_automatico_desde_mantenimiento(
+        self,
+        db: Session,
+        usuario_id: str,
+        vehiculo_id: str,
+        tipo_mantenimiento_id: str,
+        fecha_programada: date | None,
+        kilometraje_programado: int | None,
+        texto_personalizado: str | None = None,
+    ):
+        """Crea un recordatorio automático al registrar un mantenimiento.
+
+        No hace commit: deja la transacción abierta para que el servicio de
+        mantenimientos confirme todo de forma atómica con db.commit().
+
+        No repite las validaciones de 'vehículo activo' ni 'tipo aprobado'
+        porque ambas condiciones ya están garantizadas por la reserva
+        confirmada que originó este mantenimiento.
+        """
+        if fecha_programada is None and kilometraje_programado is None:
+            raise ValueError(
+                "Para crear el recordatorio debe especificar fecha o "
+                "kilometraje del próximo mantenimiento"
+            )
+
+        # Si existe un recordatorio activo del mismo tipo+vehículo (sea manual
+        # o automático), el dato del taller es más preciso: se reemplaza.
+        existente = recordatorio_repo.obtener_activo_por_vehiculo_y_tipo(
+            db, vehiculo_id, tipo_mantenimiento_id
+        )
+        if existente:
+            recordatorio_repo.eliminar_flush(db, existente)
+
+        return recordatorio_repo.crear_flush(
+            db,
+            usuario_id=usuario_id,
+            vehiculo_id=vehiculo_id,
+            tipo_mantenimiento_id=tipo_mantenimiento_id,
+            origen="automatico",
+            fecha_programada=fecha_programada,
+            kilometraje_programado=kilometraje_programado,
+            texto_personalizado=texto_personalizado,
+        )
+
+
+# Instancia de módulo — importable por otros servicios (ej. taller_mantenimiento_service)
+recordatorio_service = RecordatorioService()

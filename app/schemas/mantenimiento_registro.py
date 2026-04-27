@@ -14,6 +14,7 @@ class MantenimientoRegistroCreate(BaseModel):
     km_proximo_mantenimiento: Optional[int] = None
     fecha_proximo_mantenimiento: Optional[date] = None
     recomendaciones: Optional[str] = None
+    crear_recordatorio_proximo: bool = False
 
 class MantenimientoRegistroResponse(BaseModel):
     id: UUID
