@@ -1,66 +1,84 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from typing import List
 from app.database import get_db
-from app.core.dependencies import get_current_taller
-from app.schemas.mantenimiento_registro import (
-    MantenimientoRegistroCreate,
-    MantenimientoRegistroResponse,
+from app.core.dependencies import get_current_user
+from app.schemas.recordatorio import (
+    RecordatorioCreateSchema,
+    RecordatorioResponse,
+    VehiculoResumen,
+    TipoMantenimientoResumen,
 )
-from app.models.mantenimiento import Mantenimiento
-from app.models.reserva import Reserva
-from app.models.taller import Taller
-import uuid
+from app.services.recordatorio_service import RecordatorioService
+from app.models.usuario import Usuario
 
-router = APIRouter(prefix="/mantenimientos", tags=["Mantenimiento"])
+router = APIRouter(prefix="/recordatorios", tags=["Recordatorios"])
+recordatorio_service = RecordatorioService()
 
 
-@router.post("/", response_model=MantenimientoRegistroResponse, status_code=201)
-def registrar_mantenimiento(
-    datos: MantenimientoRegistroCreate,
-    current_taller: Taller = Depends(get_current_taller),
+def _build_response(r) -> RecordatorioResponse:
+    return RecordatorioResponse(
+        id=str(r.id),
+        vehiculo=VehiculoResumen(
+            id=str(r.vehiculo.id),
+            marca=r.vehiculo.marca,
+            modelo=r.vehiculo.modelo,
+            placa=r.vehiculo.placa,
+        ),
+        tipo_mantenimiento=TipoMantenimientoResumen(
+            id=str(r.tipo_mantenimiento.id),
+            nombre=r.tipo_mantenimiento.nombre,
+        ),
+        origen=r.origen,
+        fecha_programada=r.fecha_programada,
+        kilometraje_programado=r.kilometraje_programado,
+        texto_personalizado=r.texto_personalizado,
+        estado=r.estado,
+        fecha_creacion=r.fecha_creacion,
+    )
+
+
+@router.get("", response_model=List[RecordatorioResponse])
+def listar_recordatorios(
+    current_user: Usuario = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """El taller registra el mantenimiento al completar una reserva."""
-    # Verificar que la reserva existe y pertenece al taller
-    reserva = db.query(Reserva).filter(
-        Reserva.id == uuid.UUID(datos.reserva_id),
-        Reserva.taller_id == current_taller.id,
-    ).first()
+    recordatorios = recordatorio_service.listar_por_usuario(db, str(current_user.id))
+    return [_build_response(r) for r in recordatorios]
 
-    if not reserva:
-        raise HTTPException(status_code=404, detail="Reserva no encontrada")
 
-    if reserva.estado != "confirmada":
-        raise HTTPException(
-            status_code=400,
-            detail="Solo se pueden registrar mantenimientos de reservas confirmadas",
+@router.post("", response_model=RecordatorioResponse, status_code=201)
+def crear_recordatorio(
+    datos: RecordatorioCreateSchema,
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        recordatorio = recordatorio_service.crear(
+            db,
+            str(current_user.id),
+            datos.vehiculo_id,
+            datos.tipo_mantenimiento_id,
+            datos.fecha_programada,
+            datos.kilometraje_programado,
+            datos.texto_personalizado,
         )
+        return _build_response(recordatorio)
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
-    # Verificar que no tenga ya un mantenimiento
-    existente = db.query(Mantenimiento).filter(
-        Mantenimiento.reserva_id == uuid.UUID(datos.reserva_id)
-    ).first()
 
-    if existente:
-        raise HTTPException(
-            status_code=400,
-            detail="Esta reserva ya tiene un mantenimiento registrado",
-        )
-
-    # Crear el mantenimiento
-    mantenimiento = Mantenimiento(
-        reserva_id=uuid.UUID(datos.reserva_id),
-        vehiculo_id=reserva.vehiculo_id,
-        taller_id=current_taller.id,
-        kilometraje_registro=datos.kilometraje_registro,
-        fecha_realizado=datos.fecha_realizado,
-        observaciones=datos.observaciones,
-    )
-    db.add(mantenimiento)
-
-    # Marcar la reserva como completada
-    reserva.estado = "completada"
-    db.commit()
-    db.refresh(mantenimiento)
-
-    return mantenimiento
+@router.delete("/{recordatorio_id}", status_code=204)
+def eliminar_recordatorio(
+    recordatorio_id: str,
+    current_user: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    try:
+        recordatorio_service.eliminar(db, recordatorio_id, str(current_user.id))
+    except PermissionError as e:
+        raise HTTPException(status_code=403, detail=str(e))
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

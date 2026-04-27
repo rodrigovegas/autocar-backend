@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.routers import (
     auth, auth_google, vehiculos, talleres, disponibilidad,
     reservas, asistente, mantenimientos, recordatorios,
-    educativo, admin, especialidades, usuarios,
+    educativo, admin, especialidades, usuarios, tipos_mantenimiento,
 )
 
 app = FastAPI(
@@ -33,6 +33,7 @@ app.include_router(educativo.router)
 app.include_router(admin.router)
 app.include_router(especialidades.router)
 app.include_router(usuarios.router)
+app.include_router(tipos_mantenimiento.router)
 
 
 @app.get("/")

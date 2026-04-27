@@ -1,22 +1,38 @@
 from pydantic import BaseModel
-from datetime import date
 from typing import Optional
+from datetime import date, datetime
 
-class RecordatorioCreate(BaseModel):
-    vehiculo_id: int
-    tipo_mantenimiento_id: int
-    fecha_programada: date
+
+class VehiculoResumen(BaseModel):
+    id: str
+    marca: str
+    modelo: str
+    placa: Optional[str]
+
+
+class TipoMantenimientoResumen(BaseModel):
+    id: str
+    nombre: str
+
+
+class RecordatorioCreateSchema(BaseModel):
+    vehiculo_id: str
+    tipo_mantenimiento_id: str
+    fecha_programada: Optional[date] = None
     kilometraje_programado: Optional[int] = None
-    notas: Optional[str] = None
+    texto_personalizado: Optional[str] = None
+
 
 class RecordatorioResponse(BaseModel):
-    id: int
-    vehiculo_id: int
-    tipo_mantenimiento_id: int
-    fecha_programada: date
+    id: str
+    vehiculo: VehiculoResumen
+    tipo_mantenimiento: TipoMantenimientoResumen
+    origen: str
+    fecha_programada: Optional[date]
     kilometraje_programado: Optional[int]
-    notas: Optional[str]
-    completado: bool
+    texto_personalizado: Optional[str]
+    estado: str
+    fecha_creacion: datetime
 
     class Config:
         from_attributes = True

@@ -1,40 +1,75 @@
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from app.models.recordatorio import Recordatorio
-from app.schemas.recordatorio import RecordatorioCreate
+import uuid
+
 
 class RecordatorioRepository:
 
-    def __init__(self, db: Session):
-        self.db = db
-
-    def crear(self, datos: RecordatorioCreate) -> Recordatorio:
-        recordatorio = Recordatorio(**datos.model_dump())
-        self.db.add(recordatorio)
-        self.db.commit()
-        self.db.refresh(recordatorio)
-        return recordatorio
-
-    def listar_por_vehiculo(self, vehiculo_id: int) -> list[Recordatorio]:
+    def obtener_por_id(self, db: Session, recordatorio_id: str) -> Recordatorio | None:
         return (
-            self.db.query(Recordatorio)
-            .filter(Recordatorio.vehiculo_id == vehiculo_id)
-            .order_by(Recordatorio.fecha_programada.asc())
-            .all()
-        )
-
-    def obtener_por_id(self, recordatorio_id: int) -> Recordatorio | None:
-        return (
-            self.db.query(Recordatorio)
-            .filter(Recordatorio.id == recordatorio_id)
+            db.query(Recordatorio)
+            .options(
+                joinedload(Recordatorio.vehiculo),
+                joinedload(Recordatorio.tipo_mantenimiento),
+            )
+            .filter(Recordatorio.id == uuid.UUID(recordatorio_id))
             .first()
         )
 
-    def marcar_completado(self, recordatorio: Recordatorio) -> Recordatorio:
-        recordatorio.completado = True
-        self.db.commit()
-        self.db.refresh(recordatorio)
-        return recordatorio
+    def listar_por_usuario(self, db: Session, usuario_id: str) -> list[Recordatorio]:
+        return (
+            db.query(Recordatorio)
+            .options(
+                joinedload(Recordatorio.vehiculo),
+                joinedload(Recordatorio.tipo_mantenimiento),
+            )
+            .filter(
+                Recordatorio.usuario_id == uuid.UUID(usuario_id),
+                Recordatorio.estado == "activo",
+            )
+            .order_by(Recordatorio.fecha_programada.asc().nulls_last())
+            .all()
+        )
 
-    def eliminar(self, recordatorio: Recordatorio):
-        self.db.delete(recordatorio)
-        self.db.commit()
+    def existe_activo_mismo_tipo(
+        self, db: Session, vehiculo_id: str, tipo_mantenimiento_id: str
+    ) -> bool:
+        count = (
+            db.query(Recordatorio)
+            .filter(
+                Recordatorio.vehiculo_id == uuid.UUID(vehiculo_id),
+                Recordatorio.tipo_mantenimiento_id == uuid.UUID(tipo_mantenimiento_id),
+                Recordatorio.estado == "activo",
+            )
+            .count()
+        )
+        return count > 0
+
+    def crear(
+        self,
+        db: Session,
+        usuario_id: str,
+        vehiculo_id: str,
+        tipo_mantenimiento_id: str,
+        fecha_programada=None,
+        kilometraje_programado=None,
+        texto_personalizado=None,
+    ) -> Recordatorio:
+        recordatorio = Recordatorio(
+            usuario_id=uuid.UUID(usuario_id),
+            vehiculo_id=uuid.UUID(vehiculo_id),
+            tipo_mantenimiento_id=uuid.UUID(tipo_mantenimiento_id),
+            origen="manual",
+            fecha_programada=fecha_programada,
+            kilometraje_programado=kilometraje_programado,
+            texto_personalizado=texto_personalizado,
+            estado="activo",
+        )
+        db.add(recordatorio)
+        db.commit()
+        db.refresh(recordatorio)
+        return self.obtener_por_id(db, str(recordatorio.id))
+
+    def eliminar(self, db: Session, recordatorio: Recordatorio) -> None:
+        db.delete(recordatorio)
+        db.commit()
