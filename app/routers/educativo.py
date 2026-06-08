@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from app.services.cloudinary_service import upload_archivo
 from sqlalchemy.orm import Session
 from typing import List
 from app.database import get_db
@@ -19,6 +20,33 @@ def listar_contenidos_publicados(
     """Lista todos los contenidos educativos publicados para el usuario."""
     service = EducativoService(db)
     return service.listar_publicados()
+
+
+@router.post("/upload", status_code=200)
+async def upload_archivo_educativo(
+    archivo: UploadFile = File(...),
+    current_taller: Taller = Depends(get_current_taller),
+):
+    MAX_MB = 10
+    contenido = await archivo.read()
+
+    if len(contenido) > MAX_MB * 1024 * 1024:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El archivo supera el límite de {MAX_MB}MB. Comprimí el archivo antes de subirlo."
+        )
+
+    try:
+        resultado = upload_archivo(
+            archivo_bytes=contenido,
+            content_type=archivo.content_type,
+            nombre=archivo.filename,
+        )
+        return resultado
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Error al subir el archivo")
 
 
 @router.post("/", response_model=ContenidoResponse, status_code=201)
