@@ -1,13 +1,14 @@
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import Optional
 
-class MensajeHistorial(BaseModel):
-    rol: str  # "user" o "model"
+class MensajeHistorialSchema(BaseModel):
+    rol: str
     contenido: str
 
 class ConsultaAsistenteSchema(BaseModel):
     mensaje: str
-    historial: Optional[List[MensajeHistorial]] = []
+    historial: list[MensajeHistorialSchema] = []
+    vehiculo_id: Optional[str] = None
 
 class RespuestaAsistenteSchema(BaseModel):
     respuesta: str

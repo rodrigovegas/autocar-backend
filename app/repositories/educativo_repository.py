@@ -19,7 +19,7 @@ class EducativoRepository:
             estado="pendiente"
         )
         self.db.add(contenido)
-        self.db.commit()
+        self.db.flush()
         self.db.refresh(contenido)
         return contenido
 

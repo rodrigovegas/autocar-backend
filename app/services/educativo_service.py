@@ -12,7 +12,6 @@ class EducativoService:
 
     def publicar_contenido(self, taller_id: str,
                            datos: ContenidoCreateSchema):
-        # Validar con IA antes de guardar
         try:
             informe = self.gemini.validar_contenido_educativo(
                 datos.titulo, datos.cuerpo, datos.categoria
@@ -21,7 +20,9 @@ class EducativoService:
             informe = "No se pudo validar con IA automáticamente."
 
         contenido = self.repo.crear(taller_id, datos)
-        self.repo.actualizar_estado(contenido, "pendiente", informe_ia=informe)
+        contenido.informe_ia = informe
+        self.repo.db.commit()
+        self.repo.db.refresh(contenido)
         return contenido
 
     def listar_publicados(self):

@@ -79,6 +79,78 @@ class GeminiService:
         except Exception as e:
             raise ValueError(f"Error al generar respuesta: {str(e)}")
 
+    def generar_respuesta_con_contexto(
+        self,
+        mensaje: str,
+        historial: list = [],
+        vehiculo: dict = None,
+        contenidos_educativos: list = []
+    ) -> str:
+        """Genera respuesta usando contexto del vehículo y contenido educativo."""
+        try:
+            client = get_gemini_client()
+
+            # Construir sección de vehículo
+            contexto_vehiculo = ""
+            if vehiculo:
+                contexto_vehiculo = f"""
+VEHÍCULO DEL USUARIO:
+- Marca: {vehiculo.get('marca', 'No especificada')}
+- Modelo: {vehiculo.get('modelo', 'No especificado')}
+- Año: {vehiculo.get('anio', 'No especificado')}
+- Kilometraje: {vehiculo.get('kilometraje_actual', 'No especificado')} km
+- Combustible: {vehiculo.get('tipo_combustible', 'No especificado')}
+"""
+
+            # Construir sección de contenido educativo
+            contexto_educativo = ""
+            if contenidos_educativos:
+                articulos = "\n".join([
+                    f"--- {c.get('titulo', '')} ---\n{c.get('cuerpo', '')[:500]}"
+                    for c in contenidos_educativos[:3]
+                ])
+                contexto_educativo = f"""
+CONOCIMIENTO DE NUESTROS TALLERES:
+Los siguientes artículos pueden ser relevantes. Úsalos SOLO si aportan información útil para responder la pregunta. Si no son relevantes, ignóralos y respondé con tu conocimiento general.
+
+{articulos}
+"""
+
+            # Prompt enriquecido
+            sistema_enriquecido = PROMPT_SISTEMA
+            if contexto_vehiculo or contexto_educativo:
+                sistema_enriquecido += f"\n\n{contexto_vehiculo}{contexto_educativo}"
+
+            # Construir historial
+            historial_genai = []
+            for msg in historial:
+                rol = "user" if msg.rol == "user" else "model"
+                historial_genai.append(
+                    types.Content(
+                        role=rol,
+                        parts=[types.Part(text=msg.contenido)]
+                    )
+                )
+            historial_genai.append(
+                types.Content(
+                    role="user",
+                    parts=[types.Part(text=mensaje)]
+                )
+            )
+
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=historial_genai,
+                config=types.GenerateContentConfig(
+                    system_instruction=sistema_enriquecido,
+                    temperature=0.7,
+                )
+            )
+            return response.text
+
+        except Exception as e:
+            raise ValueError(f"Error al generar respuesta: {str(e)}")
+
     def validar_contenido_educativo(self, titulo: str, cuerpo: str,
                                      categoria: str) -> str:
         """Valida contenido educativo publicado por un taller."""
